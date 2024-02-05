@@ -1,13 +1,15 @@
 package dot.ai.dotnibssmoc.controller;
 
-import dot.ai.dotnibssmoc.dto.BankAccountResponse;
-import dot.ai.dotnibssmoc.dto.NameEnquiryRequest;
-import dot.ai.dotnibssmoc.dto.TransferRequest;
-import dot.ai.dotnibssmoc.dto.TransferResponse;
+import dot.ai.dotnibssmoc.dto.*;
+import dot.ai.dotnibssmoc.model.FinancialTransaction;
 import dot.ai.dotnibssmoc.service.TransactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,8 +27,14 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.acceptTransfer(request));
     }
 
-    @GetMapping("/transfer/status")
-    public ResponseEntity<?> statusEnquiry(@PathVariable String transRef){
-        return ResponseEntity.ok(transactionService.transactionStatusEnquiry(transRef));
+    @GetMapping("/transfer/status/{ref}")
+    public ResponseEntity<?> statusEnquiry(@PathVariable String ref){
+        return ResponseEntity.ok(transactionService.transactionStatusEnquiry(ref));
+    }
+
+    @GetMapping()
+    public ResponseEntity<Page<FinancialTransaction>> getTransactions(TransactionSearchParam queryParam) {
+        Page<FinancialTransaction> transactions = transactionService.getTransactions(queryParam);
+        return ResponseEntity.ok(transactions);
     }
 }

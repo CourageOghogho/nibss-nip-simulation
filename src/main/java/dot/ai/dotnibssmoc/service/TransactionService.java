@@ -1,9 +1,8 @@
 package dot.ai.dotnibssmoc.service;
 
-import dot.ai.dotnibssmoc.dto.BankAccountResponse;
-import dot.ai.dotnibssmoc.dto.NameEnquiryRequest;
-import dot.ai.dotnibssmoc.dto.TransferRequest;
-import dot.ai.dotnibssmoc.dto.TransferResponse;
+import dot.ai.dotnibssmoc.dto.*;
+import dot.ai.dotnibssmoc.model.FinancialTransaction;
+import org.springframework.data.domain.Page;
 
 public interface TransactionService {
     TransferResponse acceptTransfer(TransferRequest request);
@@ -11,4 +10,6 @@ public interface TransactionService {
     BankAccountResponse nameEnquiry(NameEnquiryRequest request);
 
     String transactionStatusEnquiry(String transactionReference);
+
+    Page<FinancialTransaction> getTransactions(TransactionSearchParam queryParam);
 }

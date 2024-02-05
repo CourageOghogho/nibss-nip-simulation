@@ -22,6 +22,8 @@ public class FinancialTransaction extends BaseEntity{
     private String remark;
     private BigDecimal fee;
     private Boolean isCommissionWorthy;
+    private String commissionStatus;
+    private BigDecimal commissionValue;
 
 
 }

@@ -1,9 +1,11 @@
 package dot.ai.dotnibssmoc.service;
 
-import dot.ai.dotnibssmoc.model.TransactionHistory;
+import dot.ai.dotnibssmoc.model.TransactionSummary;
+import org.springframework.data.domain.Page;
 
-import java.util.concurrent.CompletableFuture;
+import java.time.LocalDate;
 
 public interface TransactionHistoryService {
-    void create(TransactionHistory history);
+    void create(TransactionSummary history);
+    Page<TransactionSummary> getTransactionSummaryByDateRange(LocalDate fromDate, LocalDate toDate, int pageNo, int pageSize);
 }

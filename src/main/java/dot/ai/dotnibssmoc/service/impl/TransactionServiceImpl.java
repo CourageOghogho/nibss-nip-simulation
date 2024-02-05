@@ -1,14 +1,12 @@
 package dot.ai.dotnibssmoc.service.impl;
 
-import dot.ai.dotnibssmoc.dto.BankAccountResponse;
-import dot.ai.dotnibssmoc.dto.NameEnquiryRequest;
-import dot.ai.dotnibssmoc.dto.TransferRequest;
-import dot.ai.dotnibssmoc.dto.TransferResponse;
+import dot.ai.dotnibssmoc.dto.*;
 import dot.ai.dotnibssmoc.exceptions.InsufficientFundException;
 import dot.ai.dotnibssmoc.model.Bank;
+import dot.ai.dotnibssmoc.model.TransactionSpecifications;
 import dot.ai.dotnibssmoc.model.FinancialTransaction;
-import dot.ai.dotnibssmoc.model.TransactionHistory;
 import dot.ai.dotnibssmoc.model.Wallet;
+import dot.ai.dotnibssmoc.model.enums.CommissionStatus;
 import dot.ai.dotnibssmoc.model.enums.Status;
 import dot.ai.dotnibssmoc.repository.BankRepository;
 import dot.ai.dotnibssmoc.repository.TransactionRepository;
@@ -21,6 +19,9 @@ import lombok.Synchronized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -45,7 +47,6 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final PassportProvider passportProvider;
 
-    private final TransactionHistoryService transactionHistoryService;
 
     private final PlatformService platformService;
 
@@ -106,6 +107,7 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setCreditorAccountName(request.getCreditorAccountName());
         transaction.setCreditorAccountNumber(request.getCreditorAccountNumber());
         transaction.setIsCommissionWorthy(false);
+        transaction.setCommissionStatus(CommissionStatus.UNPROCESSED.getCode());
 
         var fee = computeTransactionFee(transaction.getAmount());
         transaction.setFee(fee);
@@ -120,11 +122,18 @@ public class TransactionServiceImpl implements TransactionService {
 
         transferCompletion.thenRun(() -> {
             CompletableFuture.supplyAsync(() -> processCreditImpact(transaction, destinationBank));
-            CompletableFuture.runAsync(() -> transactionHistoryService.create(TransactionHistory.of(transaction)));
         });
 
         return new TransferResponse(transaction.getTransRef(), Status.SENT.getDescription());
 
+    }
+
+    @Override
+    public Page<FinancialTransaction> getTransactions(TransactionSearchParam queryParam) {
+
+        Specification<FinancialTransaction> spec = buildSpecification(queryParam);
+        Pageable pageable = queryParam.buildPageable();
+        return transactionRepository.findAll(spec, pageable);
     }
 
 
@@ -159,10 +168,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         BigDecimal feeValue;
         feeValue= amount.multiply(BigDecimal.valueOf(transactionFeePercentage/100));
-        if(feeValue.compareTo(BigDecimal.valueOf(transactionFeeCapAt))<0){
-            return feeValue;
-        }
-        return BigDecimal.valueOf(transactionFeeCapAt);
+        return feeValue.min(BigDecimal.valueOf(transactionFeeCapAt));
     }
 
     private CompletableFuture<Void> processCreditImpact(FinancialTransaction transaction, Bank destinationBank) {
@@ -199,5 +205,17 @@ public class TransactionServiceImpl implements TransactionService {
         });
 
 
+    }
+
+    private Specification<FinancialTransaction> buildSpecification(TransactionSearchParam queryParam) {
+        return TransactionSpecifications.withParameters(
+                Optional.ofNullable(queryParam.getTransRef()),
+                Optional.ofNullable(queryParam.getSourceBankCode()),
+                Optional.ofNullable(queryParam.getBenefactorBankCode()),
+                Optional.ofNullable(queryParam.getStatus()),
+                Optional.ofNullable(queryParam.getUserId()),
+                Optional.ofNullable(queryParam.getStartDate()),
+                Optional.ofNullable(queryParam.getEndDate())
+        );
     }
 }
