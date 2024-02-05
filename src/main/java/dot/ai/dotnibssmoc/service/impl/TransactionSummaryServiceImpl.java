@@ -1,5 +1,6 @@
 package dot.ai.dotnibssmoc.service.impl;
 
+import dot.ai.dotnibssmoc.dto.QueryParam;
 import dot.ai.dotnibssmoc.model.TransactionSummary;
 import dot.ai.dotnibssmoc.model.enums.Status;
 import dot.ai.dotnibssmoc.exceptions.BadRequestException;
@@ -48,12 +49,16 @@ public class TransactionSummaryServiceImpl implements TransactionHistoryService 
     }
 
     @Override
-    public Page<TransactionSummary> getTransactionSummaryByDateRange(LocalDate fromDate, LocalDate toDate, int pageNo, int pageSize) {
-        if(fromDate.isEqual(LocalDate.now())){
+    public Page<TransactionSummary> getTransactionSummaryByDateRange(QueryParam queryParam) {
+        if(queryParam.getStartDate().toLocalDate().isEqual(LocalDate.now())){
             throw new BadRequestException("History for today is not ready");
         }
-        Pageable pageable = PageRequest.of(pageNo, pageSize);
-        return transactionSummaryRepository.findByTransactionDateBetween(fromDate, toDate, pageable);
+        Pageable pageable = queryParam.buildPageable();
+        return transactionSummaryRepository.findByTransactionDateBetween(
+                queryParam.getStartDate().toLocalDate(),
+                queryParam.getEndDate().toLocalDate(),
+                pageable
+        );
     }
 
 

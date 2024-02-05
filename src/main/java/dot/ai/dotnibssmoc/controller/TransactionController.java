@@ -5,11 +5,9 @@ import dot.ai.dotnibssmoc.model.FinancialTransaction;
 import dot.ai.dotnibssmoc.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
