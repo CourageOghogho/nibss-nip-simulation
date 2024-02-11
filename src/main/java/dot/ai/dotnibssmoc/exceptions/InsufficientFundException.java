@@ -6,6 +6,7 @@ import lombok.Data;
 public class InsufficientFundException extends RuntimeException {
     private String description;
     public InsufficientFundException(String description) {
+        super(description);
         this.description=description;
     }
 }

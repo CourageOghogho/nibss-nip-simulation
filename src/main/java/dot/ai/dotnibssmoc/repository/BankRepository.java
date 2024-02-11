@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface BankRepository extends JpaRepository<Bank, Integer> {
     Optional<Bank> findByBankCode(String sessionUserBankCode);
+
+    Optional<Bank> findByUserId(Integer userId);
 }

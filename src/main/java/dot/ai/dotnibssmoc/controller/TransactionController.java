@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -25,14 +27,14 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.acceptTransfer(request));
     }
 
-    @GetMapping("/transfer/status/{ref}")
+    @GetMapping("/status/{ref}")
     public ResponseEntity<?> statusEnquiry(@PathVariable String ref){
         return ResponseEntity.ok(transactionService.transactionStatusEnquiry(ref));
     }
 
-    @GetMapping()
-    public ResponseEntity<Page<FinancialTransaction>> getTransactions(TransactionSearchParam queryParam) {
-        Page<FinancialTransaction> transactions = transactionService.getTransactions(queryParam);
+    @GetMapping("/search")
+    public ResponseEntity<?> getTransactions(TransactionSearchParam queryParam) {
+        var transactions = transactionService.searchTransactions2(queryParam);
         return ResponseEntity.ok(transactions);
     }
 }

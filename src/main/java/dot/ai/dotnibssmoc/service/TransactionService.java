@@ -4,12 +4,15 @@ import dot.ai.dotnibssmoc.dto.*;
 import dot.ai.dotnibssmoc.model.FinancialTransaction;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
+
 public interface TransactionService {
     TransferResponse acceptTransfer(TransferRequest request);
 
     BankAccountResponse nameEnquiry(NameEnquiryRequest request);
 
-    String transactionStatusEnquiry(String transactionReference);
+    ApiResponse transactionStatusEnquiry(String transactionReference);
 
-    Page<FinancialTransaction> getTransactions(TransactionSearchParam queryParam);
+    Page<FinancialTransaction> searchTransactions(TransactionSearchParam queryParam);
+    List<FinancialTransaction> searchTransactions2(TransactionSearchParam searchParam);
 }

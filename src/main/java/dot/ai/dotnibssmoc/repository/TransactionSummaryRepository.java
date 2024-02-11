@@ -9,8 +9,6 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 public interface TransactionSummaryRepository extends JpaRepository<TransactionSummary, Integer> {
-    Optional<TransactionSummary> findByTransRef(String transRef);
-
     Page<TransactionSummary> findByTransactionDateBetween(LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
 }

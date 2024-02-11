@@ -2,12 +2,11 @@ package dot.ai.dotnibssmoc.service.impl;
 
 import dot.ai.dotnibssmoc.dto.*;
 import dot.ai.dotnibssmoc.exceptions.InsufficientFundException;
-import dot.ai.dotnibssmoc.model.Bank;
-import dot.ai.dotnibssmoc.model.TransactionSpecifications;
-import dot.ai.dotnibssmoc.model.FinancialTransaction;
-import dot.ai.dotnibssmoc.model.Wallet;
+import dot.ai.dotnibssmoc.exceptions.SystemException;
+import dot.ai.dotnibssmoc.model.*;
 import dot.ai.dotnibssmoc.model.enums.CommissionStatus;
 import dot.ai.dotnibssmoc.model.enums.Status;
+import dot.ai.dotnibssmoc.model.enums.UserRole;
 import dot.ai.dotnibssmoc.repository.BankRepository;
 import dot.ai.dotnibssmoc.repository.TransactionRepository;
 import dot.ai.dotnibssmoc.repository.WalletRepository;
@@ -26,13 +25,12 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import jakarta.persistence.criteria.Predicate;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
@@ -72,25 +70,30 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public String transactionStatusEnquiry(String transactionReference) {
+    public ApiResponse transactionStatusEnquiry(String transactionReference) {
 
         var transaction=transactionRepository.findByTransRef(transactionReference).orElseThrow(
                 ()->new EntityNotFoundException("No such transaction exists")
         );
 
-        return transaction.getStatus();
+        return new ApiResponse(Status.get(transaction.getStatus()).orElseThrow(
+                ()-> new SystemException("Something happened, unknown transaction state")
+        ).getDescription(),transaction.getStatus());
     }
 
     @Override
     @Transactional
     public TransferResponse acceptTransfer(TransferRequest request) {
 
-        Bank sourceBank=passportProvider.getSourceBank();
+        User user=passportProvider.getSessionUser();
 
-        if(sourceBank==null) throw new EntityNotFoundException("Cannot find source bank details");
+        Bank sourceBank=bankRepository.findByUserId(user.getId()).orElseThrow(
+                ()->new EntityNotFoundException("No bank record for current user")
+        );
+
 
         var destinationBank= bankRepository.findByBankCode(request.getDestinationBankCode()).orElseThrow(
-                ()->new EntityNotFoundException("INVALID BANK-CODE")
+                ()->new EntityNotFoundException("INVALID BANK-CODE: Destination bank code is incorrect")
         );
 
 
@@ -124,16 +127,36 @@ public class TransactionServiceImpl implements TransactionService {
             CompletableFuture.supplyAsync(() -> processCreditImpact(transaction, destinationBank));
         });
 
+
+        try {
+            transferCompletion.get();
+        } catch (InsufficientFundException  e) {
+            logger.info("The source wallet has insufficient balance");
+            throw e;
+        }
+
+        catch (InterruptedException | ExecutionException e) {
+            throw new SystemException(e.getMessage());
+        }
+
         return new TransferResponse(transaction.getTransRef(), Status.SENT.getDescription());
 
     }
 
     @Override
-    public Page<FinancialTransaction> getTransactions(TransactionSearchParam queryParam) {
+    public Page<FinancialTransaction> searchTransactions(TransactionSearchParam queryParam) {
 
-        Specification<FinancialTransaction> spec = buildSpecification(queryParam);
-        Pageable pageable = queryParam.buildPageable();
-        return transactionRepository.findAll(spec, pageable);
+        User user=passportProvider.getSessionUser();
+        Bank sourceBank=bankRepository.findByUserId(user.getId()).orElseThrow(
+                ()->new EntityNotFoundException("No bank record for current user")
+        );
+
+        if(user.getRole().equals(UserRole.BANK)){
+            queryParam.setSourceBankCode(sourceBank.getBankCode());
+        }
+
+        return  null;
+
     }
 
 
@@ -207,15 +230,43 @@ public class TransactionServiceImpl implements TransactionService {
 
     }
 
-    private Specification<FinancialTransaction> buildSpecification(TransactionSearchParam queryParam) {
-        return TransactionSpecifications.withParameters(
-                Optional.ofNullable(queryParam.getTransRef()),
-                Optional.ofNullable(queryParam.getSourceBankCode()),
-                Optional.ofNullable(queryParam.getBenefactorBankCode()),
-                Optional.ofNullable(queryParam.getStatus()),
-                Optional.ofNullable(queryParam.getUserId()),
-                Optional.ofNullable(queryParam.getStartDate()),
-                Optional.ofNullable(queryParam.getEndDate())
+    @Override
+    public List<FinancialTransaction> searchTransactions2(TransactionSearchParam searchParam) {
+
+        User user=passportProvider.getSessionUser();
+        Bank sourceBank=bankRepository.findByUserId(user.getId()).orElseThrow(
+                ()->new EntityNotFoundException("No bank record for current user")
         );
+
+        if(user.getRole().equals(UserRole.BANK)){
+            searchParam.setSourceBankCode(sourceBank.getBankCode());
+        }
+
+        Specification<FinancialTransaction> spec = (root, query, criteriaBuilder) -> {
+
+
+            List<Predicate> predicates = new ArrayList<>();
+
+
+            if (searchParam.getSourceBankCode() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("sourceBankCode"), searchParam.getSourceBankCode()));
+            }
+
+            if (searchParam.getStatus() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), searchParam.getStatus()));
+            }
+
+            if (searchParam.getStartDate() != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), searchParam.getStartDate()));
+            }
+
+            if (searchParam.getEndDate() != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), searchParam.getEndDate()));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return transactionRepository.findAll(spec);
     }
 }

@@ -1,10 +1,11 @@
 package dot.ai.dotnibssmoc.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+
+
 
 @Entity
 @Data

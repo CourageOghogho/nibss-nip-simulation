@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.time.LocalDate;
 
-public interface TransactionRepository extends JpaRepository<FinancialTransaction, Integer>, JpaSpecificationExecutor<FinancialTransaction> {
+public interface TransactionRepository extends JpaRepository<FinancialTransaction, Integer>,JpaSpecificationExecutor<FinancialTransaction>{
     Optional<FinancialTransaction> findByTransRef(String transactionReference);
 
     List<FinancialTransaction> findByIsCommissionWorthyTrueAndCommissionStatusIsNull();
