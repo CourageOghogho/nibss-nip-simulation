@@ -13,6 +13,5 @@ public interface TransactionService {
 
     ApiResponse transactionStatusEnquiry(String transactionReference);
 
-    Page<FinancialTransaction> searchTransactions(TransactionSearchParam queryParam);
-    List<FinancialTransaction> searchTransactions2(TransactionSearchParam searchParam);
+    Page<TransactionResponse> searchTransactions(TransactionSearchParam searchParam);
 }

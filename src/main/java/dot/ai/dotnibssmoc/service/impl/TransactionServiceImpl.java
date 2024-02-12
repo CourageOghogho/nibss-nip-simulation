@@ -143,22 +143,6 @@ public class TransactionServiceImpl implements TransactionService {
 
     }
 
-    @Override
-    public Page<FinancialTransaction> searchTransactions(TransactionSearchParam queryParam) {
-
-        User user=passportProvider.getSessionUser();
-        Bank sourceBank=bankRepository.findByUserId(user.getId()).orElseThrow(
-                ()->new EntityNotFoundException("No bank record for current user")
-        );
-
-        if(user.getRole().equals(UserRole.BANK)){
-            queryParam.setSourceBankCode(sourceBank.getBankCode());
-        }
-
-        return  null;
-
-    }
-
 
     @Synchronized
     private void processTransferRequest(FinancialTransaction transaction, Bank sourceBank,BigDecimal totalAmountDeductible) {
@@ -231,12 +215,14 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public List<FinancialTransaction> searchTransactions2(TransactionSearchParam searchParam) {
+    public Page<TransactionResponse> searchTransactions(TransactionSearchParam searchParam) {
 
         User user=passportProvider.getSessionUser();
         Bank sourceBank=bankRepository.findByUserId(user.getId()).orElseThrow(
                 ()->new EntityNotFoundException("No bank record for current user")
         );
+
+        var pageable=searchParam.buildPageable();
 
         if(user.getRole().equals(UserRole.BANK)){
             searchParam.setSourceBankCode(sourceBank.getBankCode());
@@ -267,6 +253,7 @@ public class TransactionServiceImpl implements TransactionService {
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
 
-        return transactionRepository.findAll(spec);
+        return transactionRepository.findAll(spec,pageable)
+                .map(TransactionResponse::of);
     }
 }

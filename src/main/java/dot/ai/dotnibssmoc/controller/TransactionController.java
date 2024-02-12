@@ -34,7 +34,7 @@ public class TransactionController {
 
     @GetMapping("/search")
     public ResponseEntity<?> getTransactions(TransactionSearchParam queryParam) {
-        var transactions = transactionService.searchTransactions2(queryParam);
+        var transactions = transactionService.searchTransactions(queryParam);
         return ResponseEntity.ok(transactions);
     }
 }
